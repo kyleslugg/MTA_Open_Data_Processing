@@ -1,2 +1,3 @@
 MTA*.pdf
 *.ipynb
+**/__pycache__/
