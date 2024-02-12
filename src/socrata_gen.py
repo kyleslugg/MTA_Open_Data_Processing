@@ -1,8 +1,9 @@
 import requests
+import math
 # Create function to obtain generator over dataset
 
 
-def socrata_result_generator(base_url, resource_id, query_params={}, page_size=1000, headers={}):
+def socrata_result_generator(base_url, resource_id, query_params={}, page_size=1000, max_pages=math.inf, headers={}):
 
     # Endpoint URL
     url = f"{base_url}/{resource_id}.json"
@@ -10,7 +11,7 @@ def socrata_result_generator(base_url, resource_id, query_params={}, page_size=1
     # Establish Paging
     page_offset = 0
 
-    while True:
+    while page_offset/page_size < max_pages:
         response = requests.get(url, params=dict(
             query_params, **{'$limit': page_size, '$offset': page_offset, '$order': ':id'}), headers=headers)
 
@@ -25,6 +26,3 @@ def socrata_result_generator(base_url, resource_id, query_params={}, page_size=1
 
         page_offset += page_size
         print(f"Page offset is now {page_offset}")
-        # for line in response.iter_lines(decode_unicode=True):
-        #     if line:
-    #         yield line
