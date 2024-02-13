@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS open_data.wifi_locations;
+--DROP TABLE IF EXISTS open_data.wifi_locations;
 
 CREATE TABLE IF NOT EXISTS open_data.wifi_locations (
   station_complex text,
@@ -19,12 +19,12 @@ CREATE TABLE IF NOT EXISTS open_data.wifi_locations (
   PRIMARY KEY(station_complex, station_name, lines)
 );
 
-DROP TABLE IF EXISTS open_data.subway_ridership;
+--DROP TABLE IF EXISTS open_data.subway_ridership;
 
 CREATE TABLE IF NOT EXISTS open_data.subway_ridership (
   transit_timestamp timestamp,
   transit_mode text,
-  station_complex_id int,
+  station_complex_id text,
   station_complex text,
   borough text,
   payment_method text,

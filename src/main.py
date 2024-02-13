@@ -1,9 +1,11 @@
 from socrata_gen import socrata_result_generator
 from db_interface import save_socrata_dataset, get_pg_db_engine, execute_pg_file
-from sqlalchemy.types import TEXT, JSON
+from sqlalchemy.types import JSON
+from dotenv import load_dotenv
+import os
 import pandas as pd
-import geopandas as gpd
 
+load_dotenv()
 
 # Socrata API Endpoints via NYS Open Data
 BASE_URL = "https://data.ny.gov/resource"
@@ -18,6 +20,8 @@ DEFAULT_DB_CREDENTIALS = {"database": "mta_data_task",
                           "host": "localhost",
                           "port": 5432}
 
+APP_CREDENTIALS = {'username': os.environ.get(
+    'API_KEY'), 'password': os.environ.get('API_SECRET')}
 
 pg_db = get_pg_db_engine(DEFAULT_DB_CREDENTIALS)
 
@@ -32,24 +36,24 @@ with pg_db.connect() as conn:
 
 
 # Get generators:
-subway_ridership = socrata_result_generator(BASE_URL, SUBWAY_RIDERSHIP_ID, page_size=1000, max_pages=20, query_params={
-                                            '$order': "transit_timestamp"})  # Filter for now, to keep dataset workable
-wifi_data = socrata_result_generator(BASE_URL, MTA_WIFI_LOCATIONS_ID)
+subway_ridership = socrata_result_generator(BASE_URL, SUBWAY_RIDERSHIP_ID, api_credentials=APP_CREDENTIALS, page_size=10000, page_offset=1150000, query_params={
+                                            # Filter for now, to keep dataset workable
+                                            '$where': 'transit_timestamp >= "2024-01-01T00:00:00.000"',
+                                            '$order': "transit_timestamp DESC"})
+
+wifi_data = socrata_result_generator(
+    BASE_URL, MTA_WIFI_LOCATIONS_ID, api_credentials=APP_CREDENTIALS)
 
 # Define data transformations
 
 
-def wifi_data_transform(df: gpd.GeoDataFrame):
+def wifi_data_transform(df: pd.DataFrame):
     # Address nulls in Station Name column
     df['station_name'].fillna(df['station_complex'], inplace=True)
 
     # Rename AT&T column
     df['att'] = df['at_t']
     df.drop(columns=['at_t'], inplace=True)
-
-    # # Set geometry column
-    # df['georeference'] = df['georeference'].apply(lambda x: shape(x))
-    # df.set_geometry('georeference')
 
     # NOTE: Postgres automatically coerces Yes and No values (of any case, regardless of whitespace)
     # to booleans if requested, so no need to do so here
@@ -60,9 +64,14 @@ def wifi_data_transform(df: gpd.GeoDataFrame):
 # Read and save Wifi Data
 save_socrata_dataset(wifi_data, pg_db, 'wifi_locations', 'open_data',
                      data_transform_function=wifi_data_transform, geometry_col='georeference', **{'dtype': {
-                         'location': TEXT},
+                         'georeference': JSON,
+                         'location': JSON},
                          'index': False})
 
 # Read and save Ridership Data
 save_socrata_dataset(subway_ridership, pg_db,
-                     'subway_ridership', 'open_data', geometry_col='georeference', **{'index': False})
+                     'subway_ridership', 'open_data', **{'dtype': {'georeference': JSON}, 'index': False})
+
+# Create and/or refresh materialized view to produce desired aggregates
+with pg_db.connect() as conn:
+    execute_pg_file

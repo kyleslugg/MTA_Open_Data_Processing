@@ -1,10 +1,8 @@
 
 import pandas as pd
-import geopandas as gpd
-import shapely.geometry
-import geoalchemy2
 from sqlalchemy import create_engine, text, Engine, Connection
 from sqlalchemy.engine.url import URL
+from sqlalchemy.dialects.postgresql import insert
 
 DEFAULT_ENGINE_PARAMS = {'pool_size': 5, 'pool_recycle': 3600}
 
@@ -24,11 +22,23 @@ def execute_pg_file(path, conn: Connection):
         conn.commit()
 
 
-def to_geom(x):
-    try:
-        return shapely.geometry.shape(x)
-    except:
-        print(x)
+def insert_with_duplicates(table, conn, keys, data_iterator, skip_on_conflict=True):
+    # Define custom insertion method to handle cases where primary keys are duplicated
+    data = [dict(zip(keys, row)) for row in data_iterator]
+
+    insert_statement = insert(table.table).values(data)
+
+    if not skip_on_conflict:
+        upsert_statement = insert_statement.on_conflict_do_update(
+            constraint=f"{table.table.name}_pkey",
+            set_={c.key: c for c in insert_statement.excluded},
+        )
+    else:
+        upsert_statement = insert_statement.on_conflict_do_nothing(
+            constraint=f"{table.table.name}_pkey"
+        )
+
+    conn.execute(upsert_statement)
 
 
 def save_socrata_dataset(data, db: Engine, table_name, schema_name, data_transform_function=None, geometry_col=None, **kwargs):
@@ -36,26 +46,16 @@ def save_socrata_dataset(data, db: Engine, table_name, schema_name, data_transfo
     # Read dataset chunk by chunk, and append each new chunk to the same table if it already exists
     with db.connect() as conn:
         for chunk in data:
-            # Declare df
+            df = pd.DataFrame.from_dict(chunk)
+
+            # Screen geometry columns for null values, and replace with null geometry
             if geometry_col:
-                df = gpd.GeoDataFrame.from_dict(chunk)
                 df[geometry_col] = df[geometry_col].apply(
-                    lambda x: to_geom(x))
-                df.set_geometry(geometry_col, inplace=True)
-                df.set_crs(epsg=4326, inplace=True)
-                print(df)
-
-            else:
-
-                df = pd.DataFrame.from_dict(chunk)
+                    lambda x: {"type": "Point", "coordinates": []} if x == 'null' or pd.isna(x) else x)
 
             # Apply data transformations if specified
             if data_transform_function:
                 df = data_transform_function(df)
 
-            if geometry_col:
-                df.to_postgis(table_name, conn, if_exists='append',
-                              schema=schema_name, **kwargs)
-            else:
-                df.to_sql(table_name, conn, if_exists='append',
-                          schema=schema_name, **kwargs)
+            df.to_sql(table_name, conn, if_exists='append',
+                      schema=schema_name, method=insert_with_duplicates, **kwargs)
