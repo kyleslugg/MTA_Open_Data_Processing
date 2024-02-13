@@ -6,23 +6,28 @@ from requests.auth import HTTPBasicAuth
 
 def socrata_result_generator(base_url, resource_id, api_credentials=None, query_params=None, page_size=1000, page_offset=0, max_pages=None, headers=None):
     """
-    Generate results from a Socrata API resource.
+    Creates a generator over a Socrata API resource in a paginated manner.
 
     Args:
         base_url (str): The base URL of the Socrata API.
-        resource_id (str): The ID of the resource to query.
-        api_credentials (dict, optional): API credentials for basic authentication. Defaults to None.
-        query_params (dict, optional): Additional query parameters. Defaults to None.
-        page_size (int, optional): The number of results per page. Defaults to 1000.
+        resource_id (str): The ID of the resource to retrieve data from.
+        api_credentials (dict, optional): A dictionary containing the API credentials for basic authentication. Defaults to None.
+        query_params (dict, optional): Additional query parameters to include in the API request. Defaults to None.
+        page_size (int, optional): The number of results to retrieve per page. Defaults to 1000.
         page_offset (int, optional): The starting offset for pagination. Defaults to 0.
-        max_pages (int, optional): The maximum number of pages to retrieve. Defaults to None.
-        headers (dict, optional): Additional headers for the request. Defaults to None.
+        max_pages (int, optional): The maximum number of pages to retrieve. Defaults to None, leading all pages to be retrieved.
+        headers (dict, optional): Additional headers to include in the API request. Defaults to None.
 
     Yields:
-        dict: A dictionary representing a result from the API.
+        dict: A dictionary representing a page of results from the Socrata API.
 
     Raises:
-        requests.HTTPError: If the request is unsuccessful.
+        HTTPError: If the API request is unsuccessful.
+
+    Example:
+        for result in socrata_result_generator(base_url, resource_id):
+            # Process the result
+            pass
     """
 
     # Endpoint URL

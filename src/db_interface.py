@@ -8,6 +8,21 @@ DEFAULT_ENGINE_PARAMS = {'pool_size': 5, 'pool_recycle': 3600}
 
 
 def get_pg_db_engine(db_params, engine_params=DEFAULT_ENGINE_PARAMS):
+    """
+    Create and return a SQLAlchemy engine for connecting to a PostgreSQL database.
+
+    Parameters:
+    - db_params (dict): A dictionary containing the parameters required to create the database URL. The dictionary should include all fields
+        necessary to create the URL, including a database name, username, and password.
+
+    - engine_params (dict, optional): A dictionary containing additional parameters to be passed to the SQLAlchemy create_engine function. The default value is DEFAULT_ENGINE_PARAMS, which is a dictionary with the following keys:
+        - 'pool_size' (int): The maximum number of connections to keep in the connection pool. Default is 5.
+        - 'pool_recycle' (int): The number of seconds after which a connection is recycled. Default is 3600.
+
+    Returns:
+    - engine (sqlalchemy.engine.Engine): A SQLAlchemy engine object that can be used to connect to the PostgreSQL database.
+    """
+
     url_params = dict(
         {"drivername": "postgresql+psycopg2"}, **db_params)
 
@@ -16,6 +31,20 @@ def get_pg_db_engine(db_params, engine_params=DEFAULT_ENGINE_PARAMS):
 
 
 def execute_pg_file(path, conn):
+    """
+    Execute a PostgreSQL script file.
+
+    Parameters:
+    - path (str): The path to the PostgreSQL script file.
+    - conn (sqlalchemy.engine.Connection): The database connection object.
+
+    Returns:
+    None
+
+    This function reads the contents of the specified file and executes the SQL statements within it using the provided database connection. It then commits the changes made to the database.
+
+    Note: This function assumes that the SQL statements in the file are compatible with the PostgreSQL database.
+    """
     with open(path, 'r') as reader:
         sql_text = reader.read()
         conn.execute(text(sql_text))
@@ -23,6 +52,24 @@ def execute_pg_file(path, conn):
 
 
 def insert_with_duplicates(table, conn, keys, data_iterator, skip_on_conflict=True):
+    """
+    Inserts data into a table with the option to handle duplicate primary keys.
+
+    Parameters:
+    - table: The table object representing the table to insert data into.
+    - conn: The database connection object.
+    - keys: The list of column names for the data.
+    - data_iterator: An iterator that yields rows of data.
+    - skip_on_conflict: A boolean indicating whether to skip insertion on conflict (default: True).
+
+    Returns:
+    None
+
+    Note:
+    - If skip_on_conflict is True, the function will skip insertion of rows with duplicate primary keys.
+    - If skip_on_conflict is False, the function will update existing rows with duplicate primary keys.
+
+    """
     # Define custom insertion method to handle cases where primary keys are duplicated
     data = [dict(zip(keys, row)) for row in data_iterator]
 
@@ -42,7 +89,28 @@ def insert_with_duplicates(table, conn, keys, data_iterator, skip_on_conflict=Tr
 
 
 def save_socrata_dataset(data, db, table_name, schema_name, data_transform_function=None, geometry_col=None, **kwargs):
+    """
+    Save a Socrata dataset to a database table.
 
+    Parameters:
+    - data: The dataset to save, provided as a list of dictionaries.
+    - db: The SQLAlchemy database engine object.
+    - table_name: The name of the table to save the dataset to.
+    - schema_name: The name of the schema where the table is located.
+    - data_transform_function: (optional) A function to transform the dataset (a Pandas DataFrame) before saving.
+    - geometry_col: (optional) The name of the column containing geometry data.
+    - **kwargs: Additional keyword arguments to pass to the pandas DataFrame.to_sql method.
+
+    Returns:
+    None
+
+    Note:
+    - The function reads the dataset chunk by chunk and appends each chunk to the same table if it already exists.
+    - If a geometry column is specified, null values are replaced with null geometry.
+    - If a data transformation function is specified, it is applied to the dataset before saving.
+    - The function uses the insert_with_duplicates function to handle duplicate primary keys during insertion.
+
+    """
     # Read dataset chunk by chunk, and append each new chunk to the same table if it already exists
     with db.connect() as conn:
         for chunk in data:

@@ -27,6 +27,7 @@ PROJECT_ROOT_DIRECTORY = os.path.dirname(os.path.dirname(__file__))
 
 pg_db = get_pg_db_engine(DEFAULT_DB_CREDENTIALS)
 
+
 # Run initialization scripts
 with pg_db.connect() as conn:
 
@@ -40,7 +41,7 @@ with pg_db.connect() as conn:
 
 
 # Get generators:
-subway_ridership = socrata_result_generator(BASE_URL, SUBWAY_RIDERSHIP_ID, api_credentials=APP_CREDENTIALS, page_size=10000, max_pages=1, query_params={
+subway_ridership = socrata_result_generator(BASE_URL, SUBWAY_RIDERSHIP_ID, api_credentials=APP_CREDENTIALS, page_size=10000, max_pages=10, query_params={
                                             # Filter for now, to keep dataset workable
                                             '$where': 'transit_timestamp >= "2024-01-01T00:00:00.000"',
                                             '$order': "transit_timestamp DESC"})
@@ -48,8 +49,8 @@ subway_ridership = socrata_result_generator(BASE_URL, SUBWAY_RIDERSHIP_ID, api_c
 wifi_data = socrata_result_generator(
     BASE_URL, MTA_WIFI_LOCATIONS_ID, api_credentials=APP_CREDENTIALS)
 
-# Define data transformations
 
+# Define data transformations
 
 def wifi_data_transform(df: pd.DataFrame):
     # Address nulls in Station Name column
