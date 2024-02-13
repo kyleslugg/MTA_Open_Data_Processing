@@ -1,13 +1,13 @@
 
 import pandas as pd
-from sqlalchemy import create_engine, text, Engine, Connection
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine.url import URL
 from sqlalchemy.dialects.postgresql import insert
 
 DEFAULT_ENGINE_PARAMS = {'pool_size': 5, 'pool_recycle': 3600}
 
 
-def get_pg_db_engine(db_params, engine_params=DEFAULT_ENGINE_PARAMS) -> Engine:
+def get_pg_db_engine(db_params, engine_params=DEFAULT_ENGINE_PARAMS):
     url_params = dict(
         {"drivername": "postgresql+psycopg2"}, **db_params)
 
@@ -15,7 +15,7 @@ def get_pg_db_engine(db_params, engine_params=DEFAULT_ENGINE_PARAMS) -> Engine:
     return create_engine(db_url, **engine_params)
 
 
-def execute_pg_file(path, conn: Connection):
+def execute_pg_file(path, conn):
     with open(path, 'r') as reader:
         sql_text = reader.read()
         conn.execute(text(sql_text))
@@ -41,7 +41,7 @@ def insert_with_duplicates(table, conn, keys, data_iterator, skip_on_conflict=Tr
     conn.execute(upsert_statement)
 
 
-def save_socrata_dataset(data, db: Engine, table_name, schema_name, data_transform_function=None, geometry_col=None, **kwargs):
+def save_socrata_dataset(data, db, table_name, schema_name, data_transform_function=None, geometry_col=None, **kwargs):
 
     # Read dataset chunk by chunk, and append each new chunk to the same table if it already exists
     with db.connect() as conn:

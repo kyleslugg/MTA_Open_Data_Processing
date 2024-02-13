@@ -1,3 +1,9 @@
 MTA*.pdf
 *.ipynb
 **/__pycache__/
+.env
+.venv/
+dags/
+config/
+logs/
+docker-compose.yaml

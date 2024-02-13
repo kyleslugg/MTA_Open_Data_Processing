@@ -23,20 +23,24 @@ DEFAULT_DB_CREDENTIALS = {"database": "mta_data_task",
 APP_CREDENTIALS = {'username': os.environ.get(
     'API_KEY'), 'password': os.environ.get('API_SECRET')}
 
+PROJECT_ROOT_DIRECTORY = os.path.dirname(os.path.dirname(__file__))
+
 pg_db = get_pg_db_engine(DEFAULT_DB_CREDENTIALS)
 
 # Run initialization scripts
 with pg_db.connect() as conn:
 
     # Initialize DB with PostGIS and open_data schema
-    execute_pg_file('../sql/db_init/db_init.sql', conn)
+    execute_pg_file(os.path.join(PROJECT_ROOT_DIRECTORY,
+                    'sql/db_init/db_init.sql'), conn)
 
     # Initialize tables as defined in table_init.sql
-    execute_pg_file('../sql/db_init/table_init.sql', conn)
+    execute_pg_file(os.path.join(
+        PROJECT_ROOT_DIRECTORY, 'sql/db_init/table_init.sql'), conn)
 
 
 # Get generators:
-subway_ridership = socrata_result_generator(BASE_URL, SUBWAY_RIDERSHIP_ID, api_credentials=APP_CREDENTIALS, page_size=10000, page_offset=1150000, query_params={
+subway_ridership = socrata_result_generator(BASE_URL, SUBWAY_RIDERSHIP_ID, api_credentials=APP_CREDENTIALS, page_size=10000, max_pages=1, query_params={
                                             # Filter for now, to keep dataset workable
                                             '$where': 'transit_timestamp >= "2024-01-01T00:00:00.000"',
                                             '$order': "transit_timestamp DESC"})
@@ -74,4 +78,5 @@ save_socrata_dataset(subway_ridership, pg_db,
 
 # Create and/or refresh materialized view to produce desired aggregates
 with pg_db.connect() as conn:
-    execute_pg_file
+    execute_pg_file(os.path.join(
+        PROJECT_ROOT_DIRECTORY, 'sql/agg_view.sql'), conn=conn)
