@@ -25,7 +25,7 @@ Specific instructions are as follows:
 
 ### Airflow Orchestration
 
-The following steps can be completed in one fell swoop by executing `docker compose build | docker compose up` in the project root, provided that Docker Engine is available to you, and the resulting database viewed on port 5432.
+The following steps can be completed in one fell swoop by executing `docker compose build | docker compose up` in the project root, provided that Docker Engine is available to you, and the resulting database viewed on port 5432. **To avoid permissions conflicts, please ensure that you have created empty directories for `logs`, `plugins`, and `config` at the project root prior to initializing your containers.**
 
 However, for the sake of clarity:
 
