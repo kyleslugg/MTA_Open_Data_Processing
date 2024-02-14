@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 DEFAULT_ENGINE_PARAMS = {'pool_size': 5, 'pool_recycle': 3600}
 
 
-def get_pg_db_engine(db_params, engine_params=DEFAULT_ENGINE_PARAMS):
+def get_pg_db_engine(db_params=None, db_uri=None, engine_params=DEFAULT_ENGINE_PARAMS):
     """
     Create and return a SQLAlchemy engine for connecting to a PostgreSQL database.
 
@@ -22,12 +22,35 @@ def get_pg_db_engine(db_params, engine_params=DEFAULT_ENGINE_PARAMS):
     Returns:
     - engine (sqlalchemy.engine.Engine): A SQLAlchemy engine object that can be used to connect to the PostgreSQL database.
     """
+    if not db_params:
+        db_params = {}
+        db_url = db_uri
+    else:
+        url_params = dict(
+            {"drivername": "postgresql+psycopg2"}, **db_params)
 
-    url_params = dict(
-        {"drivername": "postgresql+psycopg2"}, **db_params)
-
-    db_url = URL.create(**url_params)
+        db_url = URL.create(**url_params)
     return create_engine(db_url, **engine_params)
+
+
+def read_sql_from_file(path):
+    """
+    Reads SQL statements from a file and returns a list of non-empty statements.
+
+    Parameters:
+    - path (str): The path to the SQL file.
+
+    Returns:
+    - List[str]: A list of non-empty SQL statements.
+
+    This function reads the contents of the specified file and splits it into individual statements based on the semicolon (;) delimiter.
+    It removes any empty statements or comments starting with '--'. The resulting list contains only the non-empty SQL statements from the file.
+    """
+    with open(path, 'r') as reader:
+        text = reader.read().strip()
+        non_nulls = [statement for statement in [line.strip() for line in text.split(
+            ';')] if statement != '' and statement[:2] != '--']
+        return non_nulls
 
 
 def execute_pg_file(path, conn):
@@ -45,10 +68,9 @@ def execute_pg_file(path, conn):
 
     Note: This function assumes that the SQL statements in the file are compatible with the PostgreSQL database.
     """
-    with open(path, 'r') as reader:
-        sql_text = reader.read()
-        conn.execute(text(sql_text))
-        conn.commit()
+    for statement in read_sql_from_file(path):
+        conn.execute(text(statement))
+    conn.commit()
 
 
 def insert_with_duplicates(table, conn, keys, data_iterator, skip_on_conflict=True):

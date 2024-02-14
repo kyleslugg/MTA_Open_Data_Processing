@@ -1,31 +1,14 @@
+import os
+
+from sqlalchemy.types import JSON
+
 from socrata_gen import socrata_result_generator
 from db_interface import save_socrata_dataset, get_pg_db_engine, execute_pg_file
-from sqlalchemy.types import JSON
-from dotenv import load_dotenv
-import os
-import pandas as pd
+from data_transforms import wifi_data_transform
+from constants import BASE_URL, SUBWAY_RIDERSHIP_ID, MTA_WIFI_LOCATIONS_ID, DEFAULT_DB_CREDENTIALS, APP_CREDENTIALS, PROJECT_ROOT_DIRECTORY
 
-load_dotenv()
 
-# Socrata API Endpoints via NYS Open Data
-BASE_URL = "https://data.ny.gov/resource"
-
-SUBWAY_RIDERSHIP_ID = 'wujg-7c2s'
-MTA_WIFI_LOCATIONS_ID = 'pwa9-tmie'
-
-# Default connection details for Postgres instance running on 5432
-DEFAULT_DB_CREDENTIALS = {"database": "mta_data_task",
-                          "username": 'postgres',
-                          "password": 'postgres',
-                          "host": "localhost",
-                          "port": 5432}
-
-APP_CREDENTIALS = {'username': os.environ.get(
-    'API_KEY'), 'password': os.environ.get('API_SECRET')}
-
-PROJECT_ROOT_DIRECTORY = os.path.dirname(os.path.dirname(__file__))
-
-pg_db = get_pg_db_engine(DEFAULT_DB_CREDENTIALS)
+pg_db = get_pg_db_engine(db_params=DEFAULT_DB_CREDENTIALS)
 
 
 # Run initialization scripts
@@ -48,22 +31,6 @@ subway_ridership = socrata_result_generator(BASE_URL, SUBWAY_RIDERSHIP_ID, api_c
 
 wifi_data = socrata_result_generator(
     BASE_URL, MTA_WIFI_LOCATIONS_ID, api_credentials=APP_CREDENTIALS)
-
-
-# Define data transformations
-
-def wifi_data_transform(df: pd.DataFrame):
-    # Address nulls in Station Name column
-    df['station_name'].fillna(df['station_complex'], inplace=True)
-
-    # Rename AT&T column
-    df['att'] = df['at_t']
-    df.drop(columns=['at_t'], inplace=True)
-
-    # NOTE: Postgres automatically coerces Yes and No values (of any case, regardless of whitespace)
-    # to booleans if requested, so no need to do so here
-
-    return df
 
 
 # Read and save Wifi Data
