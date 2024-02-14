@@ -2,6 +2,3 @@ MTA*.pdf
 *.ipynb
 **/__pycache__/
 .env
-logs/**/*
-plugins/**/*
-config/**/*
